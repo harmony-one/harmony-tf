@@ -144,6 +144,8 @@ func execute() {
 				stakingDelegationUndelegateScenarios.NonExistingScenario(testCase)
 			case "staking/delegation/redelegate/standard":
 				stakingDelegationRedelegateScenarios.StandardScenario(testCase)
+			case "staking/delegation/redelegate/locked_tokens":
+				stakingDelegationRedelegateScenarios.NextEpochScenario(testCase)
 			default:
 				testCase.Executed = false
 				fmt.Println(fmt.Sprintf("Please specify a valid test type for your test case %s", testCase.Name))
