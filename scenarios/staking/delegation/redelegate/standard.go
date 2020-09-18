@@ -135,7 +135,7 @@ func StandardScenario(testCase *testing.TestCase) {
 		testCase.Transactions = append(testCase.Transactions, delegationTx)
 
 		// TODO: Actually calculate expected balance
-		balCheck, err := balances.VerifyBalance(delegatorAccount, numeric.NewDec(0), numeric.NewDec(1))
+		balCheck, err := balances.VerifyBalance(delegatorAccount, testCase.StakingParameters.FromShardID, numeric.NewDec(0), numeric.NewDec(1))
 		if err != nil {
 			msg := fmt.Sprintf("Unable to verify expected balance of account %s, address %s", delegatorAccount.Name, delegatorAccount.Address)
 			testCase.HandleError(err, validator.Account, msg)
