@@ -5,9 +5,11 @@ import (
 	sdkNetworkTypes "github.com/harmony-one/go-lib/network/types/network"
 	sdkDelegation "github.com/harmony-one/go-lib/staking/delegation"
 	sdkTxs "github.com/harmony-one/go-lib/transactions"
+	"github.com/harmony-one/harmony-tf/balances"
 	"github.com/harmony-one/harmony-tf/config"
 	"github.com/harmony-one/harmony-tf/logger"
 	testParams "github.com/harmony-one/harmony-tf/testing/parameters"
+	"github.com/harmony-one/harmony/numeric"
 	"time"
 
 	"github.com/harmony-one/harmony-tf/accounts"
@@ -132,8 +134,18 @@ func StandardScenario(testCase *testing.TestCase) {
 		}
 		testCase.Transactions = append(testCase.Transactions, delegationTx)
 
-		// TODO: Check balance of delegating account to confirm tokens used from balance
-		testCase.Result = delegationTx.Success && delegationSucceeded
+		// TODO: Actually calculate expected balance
+		balCheck, err := balances.VerifyBalance(delegatorAccount, numeric.NewDec(0), numeric.NewDec(1))
+		if err != nil {
+			msg := fmt.Sprintf("Unable to verify expected balance of account %s, address %s", delegatorAccount.Name, delegatorAccount.Address)
+			testCase.HandleError(err, validator.Account, msg)
+			return
+		}
+		if !balCheck {
+			testCase.Result = false
+		} else {
+			testCase.Result = delegationTx.Success && delegationSucceeded
+		}
 
 		logger.TeardownLog("Performing test teardown (returning funds and removing accounts)", testCase.Verbose)
 		testing.Teardown(&delegatorAccount, testCase.StakingParameters.FromShardID, config.Configuration.Funding.Account.Address, testCase.StakingParameters.FromShardID)
