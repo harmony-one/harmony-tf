@@ -16,7 +16,7 @@ import (
 	"github.com/harmony-one/harmony-tf/testing"
 )
 
-// StandardScenario - initial 1000 ONE delegation, undegelate X amount, delegate X amount immediately
+// StandardScenario - initial 1000 ONE delegation, undelegate X amount, delegate X amount immediately
 // Delegated amount should be deducted from balance
 // Delegator account balance should be set to have enough for both delegations
 func StandardScenario(testCase *testing.TestCase) {
@@ -84,7 +84,7 @@ func StandardScenario(testCase *testing.TestCase) {
 		logger.TransactionLog(fmt.Sprintf("Sending delegation transaction - will wait up to %d seconds for it to finalize", testCase.StakingParameters.Timeout), testCase.Verbose)
 		initialDelegationTx, err := staking.Delegate(&delegatorAccount, validator.Account, nil, &initialDelegationStakingParams)
 		if err != nil {
-			msg := fmt.Sprintf("Failed initial delegation from account %s, address %s to validator %s, address %s", delegatorAccount.Name, delegatorAccount.Address, validator.Account.Name, validator.Account.Address))
+			msg := fmt.Sprintf("Failed initial delegation from account %s, address %s to validator %s, address %s", delegatorAccount.Name, delegatorAccount.Address, validator.Account.Name, validator.Account.Address)
 			testCase.HandleError(err, validator.Account, msg)
 			return
 		}
@@ -95,7 +95,7 @@ func StandardScenario(testCase *testing.TestCase) {
 		node := config.Configuration.Network.API.NodeAddress(initialDelegationStakingParams.FromShardID)
 		delegations, err := sdkDelegation.ByDelegator(node, delegatorAccount.Address)
 		if err != nil {
-			msg := fmt.Sprintf("Failed initial delegation from account %s, address %s to validator %s, address %s", delegatorAccount.Name, delegatorAccount.Address, validator.Account.Name, validator.Account.Address))
+			msg := fmt.Sprintf("Failed initial delegation from account %s, address %s to validator %s, address %s", delegatorAccount.Name, delegatorAccount.Address, validator.Account.Name, validator.Account.Address)
 			testCase.HandleError(err, validator.Account, msg)
 			return
 		}
@@ -109,15 +109,19 @@ func StandardScenario(testCase *testing.TestCase) {
 		}
 
 		delegationSucceededColoring := logger.ResultColoring(delegationSucceeded, true)
-		logger.StakingLog(fmt.Sprintf("Delegation from %s to %s of %f, successful: %s", delegatorAccount.Address, validator.Account.Address, initialDelegationStakingParams.Delegation.Delegate.Amount, delegationSucceededColoring), testCase.Verbose)
+		logger.StakingLog(fmt.Sprintf("Initial delegation from %s to %s of %f, successful: %s", delegatorAccount.Address, validator.Account.Address, initialDelegationStakingParams.Delegation.Delegate.Amount, delegationSucceededColoring), testCase.Verbose)
+
+		testCase.Transactions = append(testCase.Transactions, tx)
 
 		// Undelegation
-		undelegateTx, undelegationSucceeded, err := staking.BasicUndelegation(testCase, &delegatorAccount, validator.Account, nil)
+		undelegationTx, _, err := staking.BasicUndelegation(testCase, &delegatorAccount, validator.Account, nil)
 		if err != nil {
 			msg := fmt.Sprintf("Failed to undelegate from account %s, address %s to validator %s, address %s", delegatorAccount.Name, delegatorAccount.Address, validator.Account.Name, validator.Account.Address)
 			testCase.HandleError(err, validator.Account, msg)
 			return
 		}
+
+		testCase.Transactions = append(testCase.Transactions, undelegationTx)
 
 		// Redelegation
 		delegationTx, delegationSucceeded, err := staking.BasicDelegation(testCase, &delegatorAccount, validator.Account, nil)
@@ -128,6 +132,7 @@ func StandardScenario(testCase *testing.TestCase) {
 		}
 		testCase.Transactions = append(testCase.Transactions, delegationTx)
 
+		// TODO: Check balance of delegating account to confirm tokens used from balance
 		testCase.Result = delegationTx.Success && delegationSucceeded
 
 		logger.TeardownLog("Performing test teardown (returning funds and removing accounts)", testCase.Verbose)
