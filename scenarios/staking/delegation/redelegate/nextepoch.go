@@ -135,6 +135,11 @@ func NextEpochScenario(testCase *testing.TestCase) {
 			logger.Log(fmt.Sprintf("Current Epoch: %d", currentEpoch), true)
 			break
 		}
+		if currentEpoch == 0 {
+			msg := fmt.Sprintf("Unable to get current epoch after 5 tries on shard %d", testCase.StakingParameters.FromShardID)
+			testCase.HandleError(err, validator.Account, msg)
+			return
+		}
 		// TODO: Add timeout to this loop (5.5 minutes?)
 		for true {
 			epochCheck, err := config.Configuration.Network.API.CurrentEpoch(testCase.StakingParameters.FromShardID)
