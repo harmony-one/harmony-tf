@@ -2,18 +2,18 @@ package redelegate
 
 import (
 	"fmt"
+	"time"
+
 	sdkNetworkTypes "github.com/harmony-one/go-lib/network/types/network"
 	sdkDelegation "github.com/harmony-one/go-lib/staking/delegation"
 	sdkTxs "github.com/harmony-one/go-lib/transactions"
-	"github.com/harmony-one/harmony-tf/config"
-	"github.com/harmony-one/harmony-tf/logger"
-	testParams "github.com/harmony-one/harmony-tf/testing/parameters"
-	"time"
-
 	"github.com/harmony-one/harmony-tf/accounts"
+	"github.com/harmony-one/harmony-tf/config"
 	"github.com/harmony-one/harmony-tf/funding"
+	"github.com/harmony-one/harmony-tf/logger"
 	"github.com/harmony-one/harmony-tf/staking"
 	"github.com/harmony-one/harmony-tf/testing"
+	testParams "github.com/harmony-one/harmony-tf/testing/parameters"
 )
 
 // LockedTokensScenario - initial 1000 ONE delegation, undelegate X amount, delegate X amount after 1 epoch
@@ -61,7 +61,7 @@ func NextEpochScenario(testCase *testing.TestCase) {
 		defaultGasParams.Initialize()
 		initialDelegationParams := testParams.DelegationParameters{
 			Delegate: testParams.DelegationInstruction{
-				RawAmount: "1000",
+				RawAmount: "2000",
 				Gas:       defaultGasParams,
 			},
 		}
@@ -123,7 +123,31 @@ func NextEpochScenario(testCase *testing.TestCase) {
 
 		testCase.Transactions = append(testCase.Transactions, undelegationTx)
 
-		// TODO: Wait for next epoch
+		// TODO: Use param for number of retries
+		// TODO: Check transaction accepted epoch instead of current
+		var currentEpoch uint32
+		for i := 0; i < 5; i++ {
+			currentEpoch, err = config.Configuration.Network.API.CurrentEpoch(testCase.StakingParameters.FromShardID)
+			if err != nil {
+				// Maybe should log errors
+				continue
+			}
+			logger.Log(fmt.Sprintf("Current Epoch: %d", currentEpoch), true)
+			break
+		}
+		// TODO: Add timeout to this loop (5.5 minutes?)
+		for true {
+			epochCheck, err := config.Configuration.Network.API.CurrentEpoch(testCase.StakingParameters.FromShardID)
+			if err != nil {
+				// Maybe also log errors here
+				continue
+			}
+			if epochCheck > currentEpoch {
+				break
+			}
+			time.Sleep(time.Duration(20) * time.Second)
+		}
+		logger.Log("Reach next epoch. Attempting redelegation transactions.", true)
 
 		// Redelegation
 		delegationTx, delegationSucceeded, err := staking.BasicDelegation(testCase, &delegatorAccount, validator.Account, nil)
