@@ -129,7 +129,6 @@ func NextEpochScenario(testCase *testing.TestCase) {
 		for i := 0; i < 5; i++ {
 			currentEpoch, err = config.Configuration.Network.API.CurrentEpoch(testCase.StakingParameters.FromShardID)
 			if err != nil {
-				// Maybe should log errors
 				continue
 			}
 			logger.Log(fmt.Sprintf("Current Epoch: %d", currentEpoch), true)
@@ -140,17 +139,24 @@ func NextEpochScenario(testCase *testing.TestCase) {
 			testCase.HandleError(err, validator.Account, msg)
 			return
 		}
-		// TODO: Add timeout to this loop (5.5 minutes?)
+		// TODO: Use param for timeout waiting for next epoch (set for current Harmony Testnet)
+		loopStart := time.Now().UTC()
 		for true {
 			epochCheck, err := config.Configuration.Network.API.CurrentEpoch(testCase.StakingParameters.FromShardID)
 			if err != nil {
-				// Maybe also log errors here
 				continue
 			}
 			if epochCheck > currentEpoch {
 				break
 			}
 			time.Sleep(time.Duration(20) * time.Second)
+			temp := time.Now().UTC()
+			loopDuration := temp.Sub(loopStart)
+			if loopDuration > (time.Duration(900) * time.Second) {
+				msg := fmt.Sprintf("Have not reach next epoch before timeout %d seconds", loopDuration.Seconds())
+				testCase.HandleError(err, validator.Account, msg)
+				return
+			}
 		}
 		logger.Log("Reach next epoch. Attempting redelegation transactions.", true)
 
