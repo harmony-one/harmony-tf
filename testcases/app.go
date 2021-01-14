@@ -11,6 +11,7 @@ import (
 	"github.com/harmony-one/harmony-tf/funding"
 	"github.com/harmony-one/harmony-tf/keys"
 	stakingDelegationDelegateScenarios "github.com/harmony-one/harmony-tf/scenarios/staking/delegation/delegate"
+	stakingDelegationRedelegateScenarios "github.com/harmony-one/harmony-tf/scenarios/staking/delegation/redelegate"
 	stakingDelegationUndelegateScenarios "github.com/harmony-one/harmony-tf/scenarios/staking/delegation/undelegate"
 	stakingCreateValidatorScenarios "github.com/harmony-one/harmony-tf/scenarios/staking/validator/create"
 	stakingEditValidatorScenarios "github.com/harmony-one/harmony-tf/scenarios/staking/validator/edit"
@@ -141,6 +142,10 @@ func execute() {
 				stakingDelegationUndelegateScenarios.InvalidAddressScenario(testCase)
 			case "staking/delegation/undelegate/non_existing":
 				stakingDelegationUndelegateScenarios.NonExistingScenario(testCase)
+			case "staking/delegation/redelegate/standard":
+				stakingDelegationRedelegateScenarios.StandardScenario(testCase)
+			case "staking/delegation/redelegate/locked_tokens":
+				stakingDelegationRedelegateScenarios.NextEpochScenario(testCase)
 			default:
 				testCase.Executed = false
 				fmt.Println(fmt.Sprintf("Please specify a valid test type for your test case %s", testCase.Name))

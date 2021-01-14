@@ -91,3 +91,16 @@ func OutputBalanceStatusForAddresses(accounts []sdkAccounts.Account, minimumBala
 		}
 	}
 }
+
+// VerifyBalance - returns true if account balance is the same or within the accepted threshold as the expected balance
+func VerifyBalance(account sdkAccounts.Account, shardID uint32, expectedBal, threshold numeric.Dec) (bool, error) {
+	balance, err := config.Configuration.Network.API.GetShardBalance(account.Address, shardID)
+	if err != nil {
+		return false, err
+	}
+
+	if balance.LT(expectedBal.Sub(threshold)) || balance.GT(expectedBal.Add(threshold)) {
+		return false, nil
+	}
+	return true, nil
+}
