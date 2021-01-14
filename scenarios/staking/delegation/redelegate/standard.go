@@ -57,7 +57,7 @@ func StandardScenario(testCase *testing.TestCase) {
 		// Create StakingParams for 1 initial delegation of 1000 ONE
 		defaultGasParams := sdkNetworkTypes.Gas{
 			RawCost:  "",
-			Limit: 0,
+			Limit:    0,
 			RawPrice: "",
 		}
 		defaultGasParams.Initialize()
