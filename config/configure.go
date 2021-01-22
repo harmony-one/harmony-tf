@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gookit/color"
+	sdkAccounts "github.com/harmony-one/go-lib/accounts"
 	sdkNetwork "github.com/harmony-one/go-lib/network"
 	sdkCommonTypes "github.com/harmony-one/go-lib/network/types/common"
 	sdkNetworkTypes "github.com/harmony-one/go-lib/network/types/network"
@@ -200,10 +201,16 @@ func configureAccountConfig() {
 }
 
 func configureFundingConfig() error {
-	Configuration.Funding.Account.Name = fmt.Sprintf("%s_%s_%s", Configuration.Framework.Identifier, strings.Title(Configuration.Network.Name), Configuration.Funding.Account.Name)
-
 	if Args.FundingAddress != "" && Args.FundingAddress != Configuration.Funding.Account.Address {
 		Configuration.Funding.Account.Address = Args.FundingAddress
+		account := sdkAccounts.FindAccountByAddress(Configuration.Funding.Account.Address)
+		if account.Name != "" {
+			Configuration.Funding.Account.Name = account.Name
+		}
+	}
+
+	if Configuration.Funding.Account.Name == "" {
+		Configuration.Funding.Account.Name = fmt.Sprintf("%s_%s_%s", Configuration.Framework.Identifier, strings.Title(Configuration.Network.Name), Configuration.Funding.Account.Name)
 	}
 
 	if Configuration.Framework.Test == "staking" {

@@ -2,10 +2,12 @@ package funding
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"sync"
 
 	sdkAccounts "github.com/harmony-one/go-lib/accounts"
+	sdkErrors "github.com/harmony-one/go-lib/errors"
 	sdkNetworkNonce "github.com/harmony-one/go-lib/network/rpc/nonces"
 	sdkTransactions "github.com/harmony-one/go-lib/transactions"
 	goSdkAccount "github.com/harmony-one/go-sdk/pkg/account"
@@ -288,6 +290,9 @@ func PerformFundingTransaction(account *sdkAccounts.Account, fromShardID uint32,
 						logger.ErrorLog(fmt.Sprintf("Failed to perform funding transaction from %s (shard: %d) to %s (shard: %d) of amount %f - error: %s", account.Address, fromShardID, toAddress, toShardID, amount, err.Error()), config.Configuration.Funding.Verbose)
 					} else if errors.Is(err, core.ErrInsufficientFunds) {
 						return err
+					} else if errors.Is(err, sdkErrors.ErrMissingAccount) {
+						fmt.Fprintf(os.Stderr, "error: %v\n", err)
+						os.Exit(1)
 					}
 				} else {
 					success := sdkTransactions.IsTransactionSuccessful(rawTx)
