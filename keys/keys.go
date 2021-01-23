@@ -51,7 +51,6 @@ func LoadPrivateKeys() (accs []sdkAccounts.Account, err error) {
 
 	if len(privateKeys) > 0 {
 		fmt.Println(fmt.Sprintf("Found a total of %d private key(s) to import to the keystore", len(privateKeys)))
-
 		for _, privateKey := range privateKeys {
 			address, err := PrivateKeyToAddress(privateKey)
 

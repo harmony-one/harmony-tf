@@ -10,6 +10,7 @@ import (
 	"github.com/harmony-one/harmony-tf/config"
 	"github.com/harmony-one/harmony-tf/funding"
 	"github.com/harmony-one/harmony-tf/logger"
+	"github.com/harmony-one/harmony-tf/rpc"
 	"github.com/harmony-one/harmony-tf/testing"
 	"github.com/harmony-one/harmony-tf/transactions"
 	"github.com/harmony-one/harmony/numeric"
@@ -102,6 +103,11 @@ func MultipleSenderScenario(testCase *testing.TestCase) {
 }
 
 func executeMultiSenderTransactions(testCase *testing.TestCase, senderAccounts []sdkAccounts.Account, receiverAccount sdkAccounts.Account) {
+	if testCase.Parameters.RPCPrefix == "eth" {
+		ethChainID := rpc.GenerateEthereumChainID(config.Configuration.Network.Name, testCase.Parameters.FromShardID)
+		config.Configuration.Network.ChangeRPCSettings(testCase.Parameters.RPCPrefix, ethChainID)
+	}
+
 	txs := make(chan sdkTxs.Transaction, testCase.Parameters.SenderCount)
 	var waitGroup sync.WaitGroup
 
@@ -120,11 +126,15 @@ func executeMultiSenderTransactions(testCase *testing.TestCase, senderAccounts [
 			testCase.SuccessfulTxCount++
 		}
 	}
+
+	config.Configuration.Network.RevertRPCSettings()
 }
 
 func executeSenderTransaction(testCase *testing.TestCase, senderAccount sdkAccounts.Account, receiverAccount sdkAccounts.Account, responses chan<- sdkTxs.Transaction, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 	var testCaseTx sdkTxs.Transaction
+	var rawTx map[string]interface{}
+	var err error
 	balanceRetrieved := true
 
 	senderStartingBalance, err := balances.GetNonZeroShardBalance(senderAccount.Address, testCase.Parameters.FromShardID)
@@ -138,8 +148,14 @@ func executeSenderTransaction(testCase *testing.TestCase, senderAccount sdkAccou
 		logger.TransactionLog(fmt.Sprintf("Sending transaction of %f token(s) from %s (shard %d) to %s (shard %d), tx data size: %d byte(s)", testCase.Parameters.Amount, senderAccount.Address, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, len(txData)), testCase.Verbose)
 		logger.TransactionLog(fmt.Sprintf("Will wait up to %d seconds to let the transaction get finalized", testCase.Parameters.Timeout), testCase.Verbose)
 
-		rawTx, err := transactions.SendTransaction(&senderAccount, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, testCase.Parameters.Amount, testCase.Parameters.Nonce, testCase.Parameters.Gas.Limit, testCase.Parameters.Gas.Price, txData, testCase.Parameters.Timeout)
+		if testCase.Parameters.RPCPrefix == "eth" {
+			rawTx, err = transactions.SendEthTransaction(&senderAccount, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.Amount, testCase.Parameters.Nonce, testCase.Parameters.Gas.Limit, testCase.Parameters.Gas.Price, txData, testCase.Parameters.Timeout)
+		} else {
+			rawTx, err = transactions.SendTransaction(&senderAccount, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, testCase.Parameters.Amount, testCase.Parameters.Nonce, testCase.Parameters.Gas.Limit, testCase.Parameters.Gas.Price, txData, testCase.Parameters.Timeout)
+		}
+
 		testCaseTx = sdkTxs.ToTransaction(senderAccount.Address, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, rawTx, err)
+
 		if testCaseTx.Error != nil {
 			logger.ErrorLog(fmt.Sprintf("Failed to send %f coins from %s (shard %d) to %s (shard %d) - error: %s", testCase.Parameters.Amount, senderAccount.Address, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, testCaseTx.Error.Error()), testCase.Verbose)
 		} else {

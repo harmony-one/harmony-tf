@@ -1,13 +1,17 @@
 package config
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gookit/color"
 	sdkAccounts "github.com/harmony-one/go-lib/accounts"
 	sdkNetworkTypes "github.com/harmony-one/go-lib/network/types/network"
 	sdkValidator "github.com/harmony-one/go-lib/staking/validator"
-	"github.com/harmony-one/go-sdk/pkg/common"
+	goSDKCommon "github.com/harmony-one/go-sdk/pkg/common"
+	goSDKRPC "github.com/harmony-one/go-sdk/pkg/rpc"
+	goSDKRPCEth "github.com/harmony-one/go-sdk/pkg/rpc/eth"
+	goSDKRPCV1 "github.com/harmony-one/go-sdk/pkg/rpc/v1"
 	"github.com/harmony-one/harmony/numeric"
 	"github.com/pkg/errors"
 )
@@ -61,6 +65,7 @@ type Network struct {
 	Node                 string                  `yaml:"-"`
 	Nodes                []string                `yaml:"-"`
 	Endpoints            map[string][]string     `yaml:"endpoints"`
+	RPCPrefix            string                  `yaml:"rpc_prefix,omitempty"`
 	Shards               int                     `yaml:"-"`
 	Timeout              int                     `yaml:"timeout"`
 	CrossShardTxWaitTime uint32                  `yaml:"cross_shard_tx_wait_time"`
@@ -69,6 +74,14 @@ type Network struct {
 	API                  sdkNetworkTypes.Network `yaml:"-"`
 	Retry                Retry                   `yaml:"retry"`
 	Balances             Balances                `yaml:"balances"`
+	Mutex                sync.Mutex              `yaml:"-"`
+	NetworkHistory       NetworkHistory          `yaml:"-"`
+}
+
+//NetworkHistory - keeps track of the previous network configuration when switching between RPC settings
+type NetworkHistory struct {
+	ChainID   *goSDKCommon.ChainID `yaml:"-"`
+	RPCPrefix string               `yaml:"-"`
 }
 
 // Account - represents the account settings group
@@ -122,11 +135,15 @@ func (framework *Framework) CanExecuteMemoryIntensiveTestCase() bool {
 // Initialize - initializes basic funding settings
 func (funding *Funding) Initialize() error {
 	if funding.RawMinimumFunds != "" {
-		decMinimumFunds, err := common.NewDecFromString(funding.RawMinimumFunds)
+		decMinimumFunds, err := goSDKCommon.NewDecFromString(funding.RawMinimumFunds)
 		if err != nil {
 			return errors.Wrapf(err, "Funding: Minimum funds")
 		}
 		funding.MinimumFunds = decMinimumFunds
+	}
+
+	if Configuration.Network.Name == "localnet" {
+		funding.MinimumFunds = numeric.NewDec(10)
 	}
 
 	if err := funding.Gas.Initialize(); err != nil {
@@ -134,4 +151,45 @@ func (funding *Funding) Initialize() error {
 	}
 
 	return nil
+}
+
+// Initialize - initializes basic framework settings
+func (network *Network) Initialize() {
+	if network.RPCPrefix == "" {
+		network.RPCPrefix = "hmy"
+	}
+
+	goSDKRPC.RPCPrefix = network.RPCPrefix
+}
+
+// ChangeRPCSettings - changes the RPC/Network settings i.e. when switching over to eth_ endpoints
+func (network *Network) ChangeRPCSettings(name string, chainID *goSDKCommon.ChainID) {
+	network.Mutex.Lock()
+	defer network.Mutex.Unlock()
+
+	network.NetworkHistory.RPCPrefix = network.RPCPrefix
+	network.NetworkHistory.ChainID = network.API.ChainID
+
+	network.RPCPrefix = name
+	goSDKRPC.RPCPrefix = name
+
+	switch name {
+	case "hmy":
+		goSDKRPC.Method = goSDKRPCV1.Method
+	case "eth":
+		goSDKRPC.Method = goSDKRPCEth.Method
+	default:
+		goSDKRPC.Method = goSDKRPCV1.Method
+	}
+
+	network.API.ChainID = chainID
+}
+
+// RevertRPCSettings - reverts the RPC/Network settings back to the previous configuration
+func (network *Network) RevertRPCSettings() {
+	if network.NetworkHistory.RPCPrefix != "" && network.NetworkHistory.ChainID != nil {
+		network.ChangeRPCSettings(network.NetworkHistory.RPCPrefix, network.NetworkHistory.ChainID)
+		network.NetworkHistory.RPCPrefix = ""
+		network.NetworkHistory.ChainID = nil
+	}
 }

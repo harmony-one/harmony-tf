@@ -10,11 +10,10 @@ import (
 	"github.com/harmony-one/harmony-tf/config"
 	"github.com/harmony-one/harmony-tf/funding"
 	"github.com/harmony-one/harmony-tf/logger"
+	"github.com/harmony-one/harmony-tf/rpc"
 	"github.com/harmony-one/harmony-tf/testing"
-	"github.com/harmony-one/harmony-tf/transactions"
 
 	sdkAccounts "github.com/harmony-one/go-lib/accounts"
-	sdkTxs "github.com/harmony-one/go-lib/transactions"
 )
 
 // StandardScenario - executes a standard/simple test case
@@ -59,16 +58,16 @@ func StandardScenario(testCase *testing.TestCase) {
 
 	senderStartingBalance, _ := balances.GetShardBalance(senderAccount.Address, testCase.Parameters.FromShardID)
 	receiverStartingBalance, _ := balances.GetShardBalance(receiverAccount.Address, testCase.Parameters.ToShardID)
-	txData := testCase.Parameters.GenerateTxData()
 
 	logger.AccountLog(fmt.Sprintf("Using sender account %s, address: %s and receiver account %s, address : %s", senderAccount.Name, senderAccount.Address, receiverAccount.Name, receiverAccount.Address), testCase.Verbose)
 	logger.BalanceLog(fmt.Sprintf("Sender account %s, address: %s has a starting balance of %f in shard %d before the test", senderAccount.Name, senderAccount.Address, senderStartingBalance, testCase.Parameters.FromShardID), testCase.Verbose)
 	logger.BalanceLog(fmt.Sprintf("Receiver account %s, address: %s has a starting balance of %f in shard %d before the test", receiverAccount.Name, receiverAccount.Address, receiverStartingBalance, testCase.Parameters.ToShardID), testCase.Verbose)
-	logger.TransactionLog(fmt.Sprintf("Sending transaction of %f token(s) from %s (shard %d) to %s (shard %d), tx data size: %d byte(s)", testCase.Parameters.Amount, senderAccount.Address, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, len(txData)), testCase.Verbose)
-	logger.TransactionLog(fmt.Sprintf("Will wait up to %d seconds to let the transaction get finalized", testCase.Parameters.Timeout), testCase.Verbose)
 
-	rawTx, err := transactions.SendTransaction(&senderAccount, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, testCase.Parameters.Amount, testCase.Parameters.Nonce, testCase.Parameters.Gas.Limit, testCase.Parameters.Gas.Price, txData, testCase.Parameters.Timeout)
-	testCaseTx := sdkTxs.ToTransaction(senderAccount.Address, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, rawTx, err)
+	testCaseTx := rpc.SendTransaction(testCase, &senderAccount, &receiverAccount)
+	if testCase.ErrorOccurred(testCaseTx.Error) {
+		return
+	}
+
 	testCase.Transactions = append(testCase.Transactions, testCaseTx)
 	txResultColoring := logger.ResultColoring(testCaseTx.Success, true)
 

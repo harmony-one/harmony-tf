@@ -16,6 +16,7 @@ type Parameters struct {
 	Senders       []sdkAccounts.Account
 	ReceiverCount int64 `yaml:"receiver_count"`
 	Receivers     []sdkAccounts.Account
+	RPCPrefix     string              `yaml:"rpc_prefix,omitempty"`
 	FromShardID   uint32              `yaml:"from_shard_id"`
 	ToShardID     uint32              `yaml:"to_shard_id"`
 	Data          string              `yaml:"data"`
@@ -30,6 +31,10 @@ type Parameters struct {
 
 // Initialize - initializes and converts values for regular test case parameters
 func (params *Parameters) Initialize() error {
+	if params.RPCPrefix == "" {
+		params.RPCPrefix = "hmy"
+	}
+
 	decAmount, err := common.NewDecFromString(params.RawAmount)
 	if err != nil {
 		return errors.Wrapf(err, "Parameters: Amount")

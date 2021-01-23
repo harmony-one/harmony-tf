@@ -9,10 +9,8 @@ import (
 	"github.com/harmony-one/harmony-tf/config"
 	"github.com/harmony-one/harmony-tf/funding"
 	"github.com/harmony-one/harmony-tf/logger"
+	"github.com/harmony-one/harmony-tf/rpc"
 	"github.com/harmony-one/harmony-tf/testing"
-	"github.com/harmony-one/harmony-tf/transactions"
-
-	sdkTxs "github.com/harmony-one/go-lib/transactions"
 )
 
 // SameAccountScenario - executes a test case where the sender and receiver address is the same
@@ -67,16 +65,11 @@ func SameAccountScenario(testCase *testing.TestCase) {
 		logger.BalanceLog(fmt.Sprintf("Account %s (address: %s) has a starting balance of %f in receiver shard %d before the test", account.Name, account.Address, receiverStartingBalance, testCase.Parameters.ToShardID), testCase.Verbose)
 	}
 
-	txData := testCase.Parameters.GenerateTxData()
-	logger.TransactionLog(fmt.Sprintf("Sending transaction of %f token(s) from %s (shard %d) to %s (shard %d), tx data size: %d byte(s)", testCase.Parameters.Amount, account.Address, testCase.Parameters.FromShardID, account.Address, testCase.Parameters.ToShardID, len(txData)), testCase.Verbose)
-	logger.TransactionLog(fmt.Sprintf("Will wait up to %d seconds to let the transaction get finalized", testCase.Parameters.Timeout), testCase.Verbose)
-
-	rawTx, err := transactions.SendTransaction(&account, testCase.Parameters.FromShardID, account.Address, testCase.Parameters.ToShardID, testCase.Parameters.Amount, testCase.Parameters.Nonce, testCase.Parameters.Gas.Limit, testCase.Parameters.Gas.Price, txData, testCase.Parameters.Timeout)
-	if testCase.ErrorOccurred(err) {
+	testCaseTx := rpc.SendTransaction(testCase, &account, &account)
+	if testCase.ErrorOccurred(testCaseTx.Error) {
 		return
 	}
 
-	testCaseTx := sdkTxs.ToTransaction(account.Address, testCase.Parameters.FromShardID, account.Address, testCase.Parameters.ToShardID, rawTx, err)
 	testCase.Transactions = append(testCase.Transactions, testCaseTx)
 	txResultColoring := logger.ResultColoring(testCaseTx.Success, true)
 

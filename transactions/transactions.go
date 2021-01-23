@@ -38,6 +38,30 @@ func SendSameShardTransaction(account *sdkAccounts.Account, toAddress string, sh
 	return SendTransaction(account, shardID, toAddress, shardID, amount, nonce, gasLimit, gasPrice, txData, timeout)
 }
 
+// SendEthTransaction - send transactions
+func SendEthTransaction(account *sdkAccounts.Account, shardID uint32, toAddress string, amount numeric.Dec, nonce int, gasLimit int64, gasPrice numeric.Dec, txData string, timeout int) (map[string]interface{}, error) {
+	account.Unlock()
+
+	rpcClient, currentNonce, err := TransactionPrerequisites(account, shardID, nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(txData) > 0 {
+		txData = base64.StdEncoding.EncodeToString([]byte(txData))
+	}
+
+	nodeAddress := config.Configuration.Network.API.NodeAddress(shardID)
+
+	txResult, err := sdkTxs.SendEthTransaction(account.Keystore, account.Account, rpcClient, config.Configuration.Network.API.ChainID, account.Address, toAddress, amount, gasLimit, gasPrice, currentNonce, txData, config.Configuration.Account.Passphrase, nodeAddress, timeout)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return txResult, nil
+}
+
 // TransactionPrerequisites - resolves required clients to perform transactions
 func TransactionPrerequisites(account *sdkAccounts.Account, shardID uint32, nonce int) (*rpc.HTTPMessenger, uint64, error) {
 	rpcClient, err := config.Configuration.Network.API.RPCClient(shardID)

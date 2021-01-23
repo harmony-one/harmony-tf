@@ -10,6 +10,7 @@ import (
 	"github.com/harmony-one/harmony-tf/config"
 	"github.com/harmony-one/harmony-tf/funding"
 	"github.com/harmony-one/harmony-tf/logger"
+	"github.com/harmony-one/harmony-tf/rpc"
 	"github.com/harmony-one/harmony-tf/testing"
 	"github.com/harmony-one/harmony-tf/transactions"
 
@@ -82,6 +83,11 @@ func MultipleReceiverInvalidNonceScenario(testCase *testing.TestCase) {
 }
 
 func executeMultiInvalidNonceTransactions(testCase *testing.TestCase, senderAccount sdkAccounts.Account, receiverAccounts []sdkAccounts.Account) {
+	if testCase.Parameters.RPCPrefix == "eth" {
+		ethChainID := rpc.GenerateEthereumChainID(config.Configuration.Network.Name, testCase.Parameters.FromShardID)
+		config.Configuration.Network.ChangeRPCSettings(testCase.Parameters.RPCPrefix, ethChainID)
+	}
+
 	rpcClient, _ := config.Configuration.Network.API.RPCClient(testCase.Parameters.FromShardID)
 	nonce := -1
 	receivedNonce := sdkNetworkNonce.CurrentNonce(rpcClient, senderAccount.Address)
@@ -107,11 +113,15 @@ func executeMultiInvalidNonceTransactions(testCase *testing.TestCase, senderAcco
 			testCase.SuccessfulTxCount++
 		}
 	}
+
+	config.Configuration.Network.RevertRPCSettings()
 }
 
 func executeInvalidNonceTransaction(testCase *testing.TestCase, senderAccount sdkAccounts.Account, receiverAccount sdkAccounts.Account, nonce int, responses chan<- sdkTxs.Transaction, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 	var testCaseTx sdkTxs.Transaction
+	var rawTx map[string]interface{}
+	var err error
 	balanceRetrieved := true
 	senderStartingBalance, err := balances.GetNonZeroShardBalance(senderAccount.Address, testCase.Parameters.FromShardID)
 	if testCase.ErrorOccurred(err) {
@@ -127,8 +137,14 @@ func executeInvalidNonceTransaction(testCase *testing.TestCase, senderAccount sd
 		txData := testCase.Parameters.GenerateTxData()
 		logger.TransactionLog(fmt.Sprintf("Sending transaction of %f token(s) from %s (shard %d) to %s (shard %d), tx data size: %d byte(s)", testCase.Parameters.Amount, senderAccount.Address, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, len(txData)), testCase.Verbose)
 
-		rawTx, err := transactions.SendTransaction(&senderAccount, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, testCase.Parameters.Amount, nonce, testCase.Parameters.Gas.Limit, testCase.Parameters.Gas.Price, txData, testCase.Parameters.Timeout)
-		testCaseTx = sdkTxs.ToTransaction(senderAccount.Address, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, rawTx, err)
+		if testCase.Parameters.RPCPrefix == "eth" {
+			rawTx, err = transactions.SendEthTransaction(&senderAccount, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.Amount, nonce, testCase.Parameters.Gas.Limit, testCase.Parameters.Gas.Price, txData, testCase.Parameters.Timeout)
+		} else {
+			rawTx, err = transactions.SendTransaction(&senderAccount, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, testCase.Parameters.Amount, nonce, testCase.Parameters.Gas.Limit, testCase.Parameters.Gas.Price, txData, testCase.Parameters.Timeout)
+		}
+
+		testCaseTx := sdkTxs.ToTransaction(senderAccount.Address, testCase.Parameters.FromShardID, receiverAccount.Address, testCase.Parameters.ToShardID, rawTx, err)
+
 		txResultColoring := logger.ResultColoring(testCaseTx.Success, true)
 
 		logger.TransactionLog(fmt.Sprintf("Sent %f token(s) from %s to %s - transaction hash: %s, tx successful: %s", testCase.Parameters.Amount, config.Configuration.Funding.Account.Address, receiverAccount.Address, testCaseTx.TransactionHash, txResultColoring), testCase.Verbose)

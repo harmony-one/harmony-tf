@@ -209,7 +209,7 @@ func configureFundingConfig() error {
 		}
 	}
 
-	if Configuration.Funding.Account.Name == "" {
+	if Configuration.Funding.Account.Name == "" || Configuration.Funding.Account.Name == "FundingAccount" {
 		Configuration.Funding.Account.Name = fmt.Sprintf("%s_%s_%s", Configuration.Framework.Identifier, strings.Title(Configuration.Network.Name), Configuration.Funding.Account.Name)
 	}
 
