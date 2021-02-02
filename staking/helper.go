@@ -129,6 +129,26 @@ func BasicEditValidator(testCase *testing.TestCase, validatorAccount *sdkAccount
 	return editTx, nil
 }
 
+// BasicEditValidatorStatus - helper method to edit a validator
+func BasicEditValidatorStatus(testCase *testing.TestCase, validatorAccount *sdkAccounts.Account, senderAccount *sdkAccounts.Account, status string) (sdkTxs.Transaction, error) {
+	if senderAccount == nil {
+		senderAccount = validatorAccount
+	}
+
+	logger.StakingLog(fmt.Sprintf("Proceeding to edit the the status for validator %s ...", validatorAccount.Address), testCase.Verbose)
+	logger.TransactionLog(fmt.Sprintf("Sending edit validator status transaction - will wait up to %d seconds for it to finalize", testCase.StakingParameters.Timeout), testCase.Verbose)
+
+	editRawTx, err := EditValidatorStatus(validatorAccount, senderAccount, &testCase.StakingParameters, status)
+	if err != nil {
+		return sdkTxs.Transaction{}, err
+	}
+	editTx := sdkTxs.ToTransaction(senderAccount.Address, testCase.StakingParameters.FromShardID, senderAccount.Address, testCase.StakingParameters.FromShardID, editRawTx, err)
+	editTxResultColoring := logger.ResultColoring(editTx.Success, true)
+	logger.TransactionLog(fmt.Sprintf("Performed edit validator status - transaction hash: %s, tx successful: %s", editTx.TransactionHash, editTxResultColoring), testCase.Verbose)
+
+	return editTx, nil
+}
+
 // BasicDelegation - helper method to perform delegation
 func BasicDelegation(testCase *testing.TestCase, delegatorAccount *sdkAccounts.Account, validatorAccount *sdkAccounts.Account, senderAccount *sdkAccounts.Account) (sdkTxs.Transaction, bool, error) {
 	logger.StakingLog("Proceeding to perform delegation...", testCase.Verbose)

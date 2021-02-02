@@ -51,6 +51,7 @@ func NonExistingScenario(testCase *testing.TestCase) {
 	logger.ResultLog(testCase.Result, testCase.Expected, testCase.Verbose)
 	testing.Title(testCase, "footer", testCase.Verbose)
 
+	staking.DisableValidator(&account, &testCase.StakingParameters)
 	testing.Teardown(&account, testCase.StakingParameters.FromShardID, config.Configuration.Funding.Account.Address, testCase.StakingParameters.FromShardID)
 	testCase.FinishedAt = time.Now().UTC()
 }

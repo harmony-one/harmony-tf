@@ -2,6 +2,8 @@ package redelegate
 
 import (
 	"fmt"
+	"time"
+
 	sdkNetworkTypes "github.com/harmony-one/go-lib/network/types/network"
 	sdkDelegation "github.com/harmony-one/go-lib/staking/delegation"
 	sdkTxs "github.com/harmony-one/go-lib/transactions"
@@ -10,7 +12,6 @@ import (
 	"github.com/harmony-one/harmony-tf/logger"
 	testParams "github.com/harmony-one/harmony-tf/testing/parameters"
 	"github.com/harmony-one/harmony/numeric"
-	"time"
 
 	"github.com/harmony-one/harmony-tf/accounts"
 	"github.com/harmony-one/harmony-tf/funding"
@@ -152,6 +153,7 @@ func StandardScenario(testCase *testing.TestCase) {
 	}
 
 	if !testCase.StakingParameters.ReuseExistingValidator {
+		staking.DisableValidator(validator.Account, &testCase.StakingParameters)
 		testing.Teardown(validator.Account, testCase.StakingParameters.FromShardID, config.Configuration.Funding.Account.Address, testCase.StakingParameters.FromShardID)
 	}
 

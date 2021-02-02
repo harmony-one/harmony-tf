@@ -81,6 +81,7 @@ func StandardScenario(testCase *testing.TestCase) {
 
 	if !testCase.StakingParameters.ReuseExistingValidator {
 		logger.TeardownLog("Performing test teardown (returning funds and removing accounts)", testCase.Verbose)
+		staking.DisableValidator(validator.Account, &testCase.StakingParameters)
 		testing.Teardown(validator.Account, testCase.StakingParameters.FromShardID, config.Configuration.Funding.Account.Address, testCase.StakingParameters.FromShardID)
 	}
 

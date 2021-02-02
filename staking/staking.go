@@ -142,6 +142,67 @@ func EditValidator(validatorAccount *sdkAccounts.Account, senderAccount *sdkAcco
 	return txResult, nil
 }
 
+// DisableValidator - disables a given validatora
+func DisableValidator(validatorAccount *sdkAccounts.Account, params *testParams.StakingParameters) (map[string]interface{}, error) {
+	return EditValidatorStatus(validatorAccount, nil, params, "inactive")
+}
+
+// EditValidatorStatus - edits a given validator's status
+func EditValidatorStatus(validatorAccount *sdkAccounts.Account, senderAccount *sdkAccounts.Account, params *testParams.StakingParameters, status string) (map[string]interface{}, error) {
+	if senderAccount == nil {
+		senderAccount = validatorAccount
+	}
+	senderAccount.Unlock()
+
+	if params.Edit.Validator.Account == nil {
+		params.Edit.Validator.Account = validatorAccount
+	}
+
+	rpcClient, err := config.Configuration.Network.API.RPCClient(params.FromShardID)
+	if err != nil {
+		return nil, err
+	}
+
+	var currentNonce uint64
+	if params.Nonce < 0 {
+		currentNonce = sdkNetworkNonce.CurrentNonce(rpcClient, senderAccount.Address)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		currentNonce = uint64(params.Nonce)
+	}
+
+	gasLimit := params.Gas.Limit
+	gasPrice := params.Gas.Price
+
+	if params.Edit.Gas.RawPrice != "" {
+		gasLimit = params.Edit.Gas.Limit
+		gasPrice = params.Edit.Gas.Price
+	}
+
+	txResult, err := sdkValidator.EditStatus(
+		senderAccount.Keystore,
+		senderAccount.Account,
+		rpcClient,
+		config.Configuration.Network.API.ChainID,
+		validatorAccount.Address,
+		status,
+		gasLimit,
+		gasPrice,
+		currentNonce,
+		config.Configuration.Account.Passphrase,
+		config.Configuration.Network.API.NodeAddress(params.FromShardID),
+		params.Timeout,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return txResult, nil
+}
+
 func validateValidatorValues(validator sdkValidator.Validator) error {
 	if validator.Amount.IsNil() {
 		return errNilAmount

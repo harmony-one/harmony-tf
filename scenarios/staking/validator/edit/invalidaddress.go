@@ -59,6 +59,7 @@ func InvalidAddressScenario(testCase *testing.TestCase) {
 
 		testing.Teardown(&invalidAccount, testCase.StakingParameters.FromShardID, config.Configuration.Funding.Account.Address, testCase.StakingParameters.FromShardID)
 		if !testCase.StakingParameters.ReuseExistingValidator {
+			staking.DisableValidator(validator.Account, &testCase.StakingParameters)
 			testing.Teardown(validator.Account, testCase.StakingParameters.FromShardID, config.Configuration.Funding.Account.Address, testCase.StakingParameters.FromShardID)
 		}
 	}
